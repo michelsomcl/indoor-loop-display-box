@@ -20,100 +20,104 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    // First, get the device information
-    const { data: device, error: deviceError } = await supabase
-      .from('devices')
-      .select('id, playlist_id')
-      .eq('codigo', device_code)
-      .single();
-
-    if (deviceError) {
-      console.error('Erro ao buscar dispositivo:', deviceError);
-      return;
-    }
-
-    if (!device) {
-      console.error('Dispositivo não encontrado:', device_code);
-      return;
-    }
-
-    console.log('Dispositivo encontrado:', device);
-
-    // Get playlist items
-    let playlistId = device.playlist_id;
-    
-    if (!playlistId) {
-      const { data: devicePlaylist, error: devicePlaylistError } = await supabase
-        .from('device_playlists')
-        .select('playlist_id')
-        .eq('device_id', device.id)
-        .eq('ativo', true)
+    try {
+      // First, get the device information
+      const { data: device, error: deviceError } = await supabase
+        .from('devices')
+        .select('id, playlist_id')
+        .eq('codigo', device_code)
         .single();
 
-      if (devicePlaylistError) {
-        console.error('Erro ao buscar playlist do dispositivo:', devicePlaylistError);
+      if (deviceError) {
+        console.error('Erro ao buscar dispositivo:', deviceError);
         return;
       }
 
-      if (!devicePlaylist) {
-        console.error('Nenhuma playlist ativa para este dispositivo');
+      if (!device) {
+        console.error('Dispositivo não encontrado:', device_code);
         return;
       }
 
-      playlistId = devicePlaylist.playlist_id;
-    }
+      console.log('Dispositivo encontrado:', device);
 
-    console.log('ID da playlist:', playlistId);
-
-    // Get playlist items
-    const { data: playlistItems, error: itemsError } = await supabase
-      .from('playlist_items')
-      .select(`
-        id,
-        ordem,
-        tipo,
-        tempo,
-        media_files (url),
-        external_links (url)
-      `)
-      .eq('playlist_id', playlistId)
-      .order('ordem', { ascending: true });
-
-    if (itemsError) {
-      console.error('Erro ao buscar itens da playlist:', itemsError);
-      return;
-    }
-
-    if (!playlistItems || playlistItems.length === 0) {
-      console.error('Nenhum item encontrado na playlist');
-      return;
-    }
-
-    console.log('Itens da playlist:', playlistItems);
-
-    // Map the items to our playlist format
-    playlist = playlistItems.map(item => {
-      let url = '';
+      // Get playlist items
+      let playlistId = device.playlist_id;
       
-      if (item.tipo === 'imagem' || item.tipo === 'video') {
-        // Access the first item of the media_files array if available
-        url = item.media_files && item.media_files[0]?.url || '';
-      } else if (item.tipo === 'link') {
-        // Access the first item of the external_links array if available
-        url = item.external_links && item.external_links[0]?.url || '';
+      if (!playlistId) {
+        const { data: devicePlaylist, error: devicePlaylistError } = await supabase
+          .from('device_playlists')
+          .select('playlist_id')
+          .eq('device_id', device.id)
+          .eq('ativo', true)
+          .single();
+
+        if (devicePlaylistError) {
+          console.error('Erro ao buscar playlist do dispositivo:', devicePlaylistError);
+          return;
+        }
+
+        if (!devicePlaylist) {
+          console.error('Nenhuma playlist ativa para este dispositivo');
+          return;
+        }
+
+        playlistId = devicePlaylist.playlist_id;
       }
-      
-      return {
-        id: item.id,
-        tipo: item.tipo,
-        url: url,
-        duracao: item.tempo || 10  // Default to 10 seconds if not specified
-      };
-    });
 
-    console.log('Playlist processada:', playlist);
-    index = 0;
-    exibirProximo();
+      console.log('ID da playlist:', playlistId);
+
+      // Get playlist items
+      const { data: playlistItems, error: itemsError } = await supabase
+        .from('playlist_items')
+        .select(`
+          id,
+          ordem,
+          tipo,
+          tempo,
+          media_files (url),
+          external_links (url)
+        `)
+        .eq('playlist_id', playlistId)
+        .order('ordem', { ascending: true });
+
+      if (itemsError) {
+        console.error('Erro ao buscar itens da playlist:', itemsError);
+        return;
+      }
+
+      if (!playlistItems || playlistItems.length === 0) {
+        console.error('Nenhum item encontrado na playlist');
+        return;
+      }
+
+      console.log('Itens da playlist:', playlistItems);
+
+      // Map the items to our playlist format
+      playlist = playlistItems.map(item => {
+        let url = '';
+        
+        if (item.tipo === 'imagem' || item.tipo === 'video') {
+          // Access the first item of the media_files array if available
+          url = item.media_files && item.media_files.length > 0 ? item.media_files[0].url : '';
+        } else if (item.tipo === 'link') {
+          // Access the first item of the external_links array if available
+          url = item.external_links && item.external_links.length > 0 ? item.external_links[0].url : '';
+        }
+        
+        return {
+          id: item.id,
+          tipo: item.tipo,
+          url: url,
+          duracao: item.tempo || 10  // Default to 10 seconds if not specified
+        };
+      });
+
+      console.log('Playlist processada:', playlist);
+      index = 0;
+      exibirProximo();
+    } catch (error) {
+      console.error('Erro ao carregar playlist:', error);
+    }
   }
 
   function exibirProximo() {

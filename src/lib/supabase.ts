@@ -38,11 +38,16 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
 
     if (deviceError) {
       console.error("Device error:", deviceError);
-      throw new Error('Device not found');
+      throw new Error(`Device not found: ${deviceError.message}`);
     }
 
     if (!device) {
       console.log("No device found with code:", deviceCode);
+      toast({
+        title: "Dispositivo não encontrado",
+        description: `Nenhum dispositivo encontrado com código: ${deviceCode}`,
+        variant: "destructive"
+      });
       throw new Error('Device not found');
     }
 
@@ -59,16 +64,28 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
         .eq('ativo', true)
         .single();
 
-      if (devicePlaylistError) {
+      if (devicePlaylistError && devicePlaylistError.code !== 'PGRST116') {
         console.error("Device playlist error:", devicePlaylistError);
+        toast({
+          title: "Erro",
+          description: "Não foi possível encontrar uma playlist ativa para este dispositivo",
+          variant: "destructive"
+        });
         throw new Error('No active playlist found for this device');
       }
 
-      if (!devicePlaylist) {
-        throw new Error('No active playlist assigned to this device');
+      if (devicePlaylist) {
+        playlistId = devicePlaylist.playlist_id;
       }
+    }
 
-      playlistId = devicePlaylist.playlist_id;
+    if (!playlistId) {
+      toast({
+        title: "Sem playlist",
+        description: "Este dispositivo não tem uma playlist atribuída",
+        variant: "destructive"
+      });
+      throw new Error('No playlist assigned to this device');
     }
 
     console.log("Using playlist ID:", playlistId);
@@ -80,8 +97,13 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
       .eq('id', playlistId)
       .single();
 
-    if (playlistError || !playlist) {
+    if (playlistError) {
       console.error("Playlist error:", playlistError);
+      toast({
+        title: "Erro",
+        description: "Não foi possível encontrar a playlist",
+        variant: "destructive"
+      });
       throw new Error('Playlist not found');
     }
 
@@ -103,6 +125,11 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
 
     if (itemsError) {
       console.error("Items error:", itemsError);
+      toast({
+        title: "Erro",
+        description: "Falha ao carregar itens da playlist",
+        variant: "destructive"
+      });
       throw new Error('Failed to load playlist items');
     }
 
@@ -113,13 +140,11 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
       let content = '';
       
       if (item.tipo === 'imagem' || item.tipo === 'video') {
-        // The media_files is an array of objects with url property
-        // We need to access the first item if available
-        content = item.media_files && item.media_files[0] ? item.media_files[0].url : '';
+        // Check if media_files exists and has elements
+        content = item.media_files && item.media_files.length > 0 ? item.media_files[0].url : '';
       } else if (item.tipo === 'link') {
-        // The external_links is an array of objects with url property
-        // We need to access the first item if available
-        content = item.external_links && item.external_links[0] ? item.external_links[0].url : '';
+        // Check if external_links exists and has elements
+        content = item.external_links && item.external_links.length > 0 ? item.external_links[0].url : '';
       }
       
       return {

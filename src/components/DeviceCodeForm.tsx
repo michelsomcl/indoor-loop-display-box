@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { saveDeviceCode, getPlaylistByDeviceCode } from '@/lib/supabase';
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from '@/lib/supabase';
 
 const DeviceCodeForm: React.FC = () => {
   const [deviceCode, setDeviceCode] = useState('');
@@ -17,7 +18,7 @@ const DeviceCodeForm: React.FC = () => {
     
     if (!deviceCode.trim()) {
       toast({
-        title: "Error",
+        title: "Erro",
         description: "Por favor, insira um código de dispositivo",
         variant: "destructive"
       });
@@ -27,6 +28,49 @@ const DeviceCodeForm: React.FC = () => {
     setLoading(true);
     
     try {
+      console.log("Verificando dispositivo:", deviceCode);
+      
+      // First check directly if the device exists
+      const { data: device, error: deviceError } = await supabase
+        .from('devices')
+        .select('id')
+        .eq('codigo', deviceCode)
+        .single();
+        
+      if (deviceError) {
+        console.error("Erro ao buscar dispositivo:", deviceError);
+        
+        if (deviceError.code === 'PGRST116') {
+          toast({
+            title: "Dispositivo não encontrado",
+            description: `Não foi encontrado dispositivo com código: ${deviceCode}`,
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: `Erro ao verificar dispositivo: ${deviceError.message}`,
+            variant: "destructive"
+          });
+        }
+        
+        setLoading(false);
+        return;
+      }
+      
+      if (!device) {
+        toast({
+          title: "Dispositivo não encontrado",
+          description: "O código informado não corresponde a um dispositivo registrado",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      console.log("Dispositivo encontrado:", device);
+      
+      // Now try to get the full playlist
       const playlist = await getPlaylistByDeviceCode(deviceCode);
       
       if (playlist) {
@@ -37,15 +81,16 @@ const DeviceCodeForm: React.FC = () => {
         navigate('/player');
       } else {
         toast({
-          title: "Dispositivo não encontrado",
-          description: "O código informado não corresponde a um dispositivo registrado",
+          title: "Playlist não encontrada",
+          description: "Dispositivo encontrado, mas não há playlist disponível",
           variant: "destructive"
         });
       }
     } catch (error) {
+      console.error("Erro completo:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível verificar o código do dispositivo",
+        description: error instanceof Error ? error.message : "Não foi possível verificar o código do dispositivo",
         variant: "destructive"
       });
     } finally {
