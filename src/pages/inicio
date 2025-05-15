@@ -68,9 +68,11 @@
       }
     }
     
-    // Limpar qualquer código anterior armazenado quando esta página for carregada
-    // Isso garante que o usuário possa inserir um novo código
-    // localStorage.removeItem('deviceCode');
+    // Check if we already have a code stored
+    const storedCode = localStorage.getItem('deviceCode');
+    if (storedCode) {
+      document.getElementById('codigo').value = storedCode;
+    }
   </script>
 </body>
 </html>

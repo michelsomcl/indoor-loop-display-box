@@ -115,11 +115,11 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
       if (item.tipo === 'imagem' || item.tipo === 'video') {
         // The media_files is an array of objects with url property
         // We need to access the first item if available
-        content = item.media_files && item.media_files[0]?.url || '';
+        content = item.media_files && item.media_files[0] ? item.media_files[0].url : '';
       } else if (item.tipo === 'link') {
         // The external_links is an array of objects with url property
         // We need to access the first item if available
-        content = item.external_links && item.external_links[0]?.url || '';
+        content = item.external_links && item.external_links[0] ? item.external_links[0].url : '';
       }
       
       return {
