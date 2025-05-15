@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const { data: device, error: deviceError } = await supabase
         .from('devices')
         .select('id, playlist_id')
-        .eq('codigo', device_code)
+        .eq('code', device_code)
         .single();
 
       if (deviceError) {
