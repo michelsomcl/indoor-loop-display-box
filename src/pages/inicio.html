@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Início - Player</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+      background: #121212;
+      color: white;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 1.2em;
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Configurar Player</h1>
+  <input type="text" id="deviceCode" placeholder="Código do Dispositivo" />
+  <button onclick="salvarCodigo()">Salvar e ir para o Player</button>
+
+  <script>
+    function salvarCodigo() {
+      const code = document.getElementById('deviceCode').value;
+      if (!code) {
+        alert("Digite o código!");
+        return;
+      }
+      localStorage.setItem('deviceCode', code);
+      window.location.href = 'player.html'; // redireciona
+    }
+  </script>
+</body>
+</html>
