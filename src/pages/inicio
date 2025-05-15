@@ -1,0 +1,17 @@
+<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#111;">
+  <h1 style="color:white;margin-bottom:1em;">Digite o código do dispositivo</h1>
+  <input id="codigo" placeholder="ex: PADARIA01" style="padding:10px;border-radius:5px;" />
+  <button onclick="salvarCodigo()" style="margin-top:1em;padding:10px 20px;border:none;border-radius:5px;background:#4caf50;color:white;">Começar</button>
+
+  <script>
+    function salvarCodigo() {
+      const code = document.getElementById('codigo').value;
+      if (code) {
+        localStorage.setItem('device_code', code);
+        window.location.href = '/player';
+      } else {
+        alert("Digite um código válido");
+      }
+    }
+  </script>
+</body>
