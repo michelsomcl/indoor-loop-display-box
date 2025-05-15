@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
           .from('device_playlists')
           .select('playlist_id')
           .eq('device_id', device.id)
-          .eq('ativo', true)
+          .eq('is_active', true)
           .single();
 
         if (devicePlaylistError) {
