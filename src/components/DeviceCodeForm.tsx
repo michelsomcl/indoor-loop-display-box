@@ -34,7 +34,7 @@ const DeviceCodeForm: React.FC = () => {
       const { data: device, error: deviceError } = await supabase
         .from('devices')
         .select('id')
-        .eq('codigo', deviceCode)
+        .eq('code', deviceCode)
         .single();
         
       if (deviceError) {
