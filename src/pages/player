@@ -1,0 +1,8 @@
+<body style="margin: 0; background: black;">
+  <div id="player-content" style="width:100vw;height:100vh;overflow:hidden;"></div>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <!-- Script player -->
+  <script src="/loop-player.js"></script>
+</body>
