@@ -33,7 +33,7 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
     const { data: device, error: deviceError } = await supabase
       .from('devices')
       .select('id, playlist_id')
-      .eq('codigo', deviceCode)
+      .eq('code', deviceCode)
       .single();
 
     if (deviceError) {
