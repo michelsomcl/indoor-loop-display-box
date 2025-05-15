@@ -1,17 +1,76 @@
-<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#111;">
-  <h1 style="color:white;margin-bottom:1em;">Digite o código do dispositivo</h1>
-  <input id="codigo" placeholder="ex: PADARIA01" style="padding:10px;border-radius:5px;" />
-  <button onclick="salvarCodigo()" style="margin-top:1em;padding:10px 20px;border:none;border-radius:5px;background:#4caf50;color:white;">Começar</button>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Midia Indoor Player</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+    }
+    
+    h1 {
+      margin-bottom: 1em;
+      text-align: center;
+    }
+    
+    input {
+      padding: 15px;
+      border-radius: 5px;
+      border: none;
+      width: 80%;
+      max-width: 300px;
+      font-size: 16px;
+      text-align: center;
+    }
+    
+    button {
+      margin-top: 1em;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 5px;
+      background: #4caf50;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    button:hover {
+      background: #3e8e41;
+    }
+  </style>
+</head>
+<body>
+  <h1>Digite o código do dispositivo</h1>
+  <input id="codigo" placeholder="ex: Teste1" style="padding:15px;border-radius:5px;" />
+  <button onclick="salvarCodigo()">Começar</button>
 
   <script>
     function salvarCodigo() {
-      const code = document.getElementById('codigo').value;
+      const code = document.getElementById('codigo').value.trim();
       if (code) {
-        localStorage.setItem('device_code', code);
+        localStorage.setItem('deviceCode', code);
         window.location.href = '/player';
       } else {
         alert("Digite um código válido");
       }
     }
+    
+    // Limpar qualquer código anterior armazenado quando esta página for carregada
+    // Isso garante que o usuário possa inserir um novo código
+    // localStorage.removeItem('deviceCode');
   </script>
 </body>
+</html>
