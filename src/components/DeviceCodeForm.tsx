@@ -126,7 +126,7 @@ const DeviceCodeForm: React.FC = () => {
       // Check if playlist has items, but query each table separately
       const { data: playlistItems, error: itemsError } = await supabase
         .from('playlist_items')
-        .select('id, order_num, tipo, tempo, playlist_id')  // Changed "ordem" to "order_num"
+        .select('id, order_num, item_type, tempo, playlist_id')  // Changed "tipo" to "item_type"
         .eq('playlist_id', playlistId);
         
       if (itemsError) {

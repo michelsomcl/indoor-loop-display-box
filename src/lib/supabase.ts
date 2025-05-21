@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { toast } from "@/components/ui/use-toast";
 
@@ -96,9 +97,9 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
     // Get the playlist items (simple query without joins)
     const { data: playlistItems, error: itemsError } = await supabase
       .from('playlist_items')
-      .select('id, order_num, tipo, tempo, playlist_id')  // Changed "ordem" to "order_num"
+      .select('id, order_num, item_type, tempo, playlist_id')  // Changed "tipo" to "item_type"
       .eq('playlist_id', playlistId)
-      .order('order_num', { ascending: true });  // Changed "ordem" to "order_num" here too
+      .order('order_num', { ascending: true });
 
     if (itemsError) {
       console.error("Items error:", itemsError);
@@ -118,7 +119,7 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
     for (const item of playlistItems) {
       let content = '';
       
-      if (item.tipo === 'imagem' || item.tipo === 'video') {
+      if (item.item_type === 'imagem' || item.item_type === 'video') {  // Changed "tipo" to "item_type"
         // Fetch media from media_files table
         const { data: mediaFiles, error: mediaError } = await supabase
           .from('media_files')
@@ -131,7 +132,7 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
         }
         
         console.log(`Media for item ${item.id}:`, mediaFiles, mediaError);
-      } else if (item.tipo === 'link') {
+      } else if (item.item_type === 'link') {  // Changed "tipo" to "item_type"
         // Fetch URL from external_links table
         const { data: links, error: linkError } = await supabase
           .from('external_links')
@@ -148,8 +149,8 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
       
       items.push({
         id: item.id,
-        order: item.order_num,  // Changed from item.ordem to item.order_num
-        type: mapTipoToMediaType(item.tipo),
+        order: item.order_num,
+        type: mapTipoToMediaType(item.item_type),  // Changed from item.tipo to item.item_type
         content,
         duration: item.tempo || 10
       });

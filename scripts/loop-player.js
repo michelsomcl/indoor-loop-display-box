@@ -1,4 +1,3 @@
-
 const SUPABASE_URL = 'https://heefdxcsucayilaxshxg.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhlZWZkeGNzdWNheWlsYXhzaHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMjU5NzQsImV4cCI6MjA2MjkwMTk3NH0.285en917Bf8CIR3s3vf-Z-AahwQS2PS813mtEQk71oE';
 
@@ -65,9 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // Get playlist items - simple query without joins
       const { data: playlistItems, error: itemsError } = await supabase
         .from('playlist_items')
-        .select('id, order_num, tipo, tempo, playlist_id')  // Changed "ordem" to "order_num"
+        .select('id, order_num, item_type, tempo, playlist_id')  // Changed "tipo" to "item_type"
         .eq('playlist_id', playlistId)
-        .order('order_num', { ascending: true });  // Changed "ordem" to "order_num" here too
+        .order('order_num', { ascending: true });
 
       if (itemsError) {
         console.error('Erro ao buscar itens da playlist:', itemsError);
@@ -87,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
       for (const item of playlistItems) {
         let url = '';
         
-        if (item.tipo === 'imagem' || item.tipo === 'video') {
+        if (item.item_type === 'imagem' || item.item_type === 'video') {  // Changed "tipo" to "item_type"
           // Get URL from media_files table
           const { data: media, error: mediaError } = await supabase
             .from('media_files')
@@ -98,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (!mediaError && media) {
             url = media.url;
           }
-        } else if (item.tipo === 'link') {
+        } else if (item.item_type === 'link') {  // Changed "tipo" to "item_type"
           // Get URL from external_links table
           const { data: link, error: linkError } = await supabase
             .from('external_links')
@@ -113,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         playlist.push({
           id: item.id,
-          tipo: item.tipo,
+          tipo: item.item_type,  // Store as "tipo" for consistency with the rest of the code
           url: url,
           duracao: item.tempo || 10
         });
