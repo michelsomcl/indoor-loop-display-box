@@ -30,7 +30,7 @@ const DeviceCodeForm: React.FC = () => {
     try {
       console.log("Verificando dispositivo:", deviceCode);
       
-      // First check directly if the device exists
+      // First check if the device exists
       const { data: device, error: deviceError } = await supabase
         .from('devices')
         .select('id')
@@ -69,6 +69,28 @@ const DeviceCodeForm: React.FC = () => {
       }
       
       console.log("Dispositivo encontrado:", device);
+      
+      // Check for device_playlists entries
+      const { data: devicePlaylists, error: dpError } = await supabase
+        .from('device_playlists')
+        .select('playlist_id')
+        .eq('device_id', device.id);
+      
+      console.log("Playlists associadas ao dispositivo:", devicePlaylists);
+      
+      if (dpError) {
+        console.error("Erro ao verificar playlists do dispositivo:", dpError);
+      }
+      
+      if (!devicePlaylists || devicePlaylists.length === 0) {
+        toast({
+          title: "Sem playlist",
+          description: "Este dispositivo não tem nenhuma playlist associada na tabela device_playlists",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
       
       // Now try to get the full playlist
       const playlist = await getPlaylistByDeviceCode(deviceCode);

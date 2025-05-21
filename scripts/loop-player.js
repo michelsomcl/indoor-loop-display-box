@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // First, get the device information
       const { data: device, error: deviceError } = await supabase
         .from('devices')
-        .select('id, playlist_id')
+        .select('id')
         .eq('code', device_code)
         .single();
 
@@ -40,28 +40,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
       console.log('Dispositivo encontrado:', device);
 
-      // Get playlist items
-      let playlistId = device.playlist_id;
+      // Try to find a playlist for the device using device_playlists table
+      let playlistId = null;
       
-      if (!playlistId) {
-        const { data: devicePlaylist, error: devicePlaylistError } = await supabase
+      // First try with is_active field
+      const { data: devicePlaylist, error: devicePlaylistError } = await supabase
+        .from('device_playlists')
+        .select('playlist_id')
+        .eq('device_id', device.id)
+        .eq('is_active', true)
+        .single();
+      
+      if (!devicePlaylistError && devicePlaylist) {
+        playlistId = devicePlaylist.playlist_id;
+        console.log('Playlist encontrada com is_active:', playlistId);
+      } else {
+        console.log('Tentando com campo ativo em vez de is_active');
+        
+        // Try with ativo field if is_active failed
+        const { data: activoPlaylist, error: activoPlaylistError } = await supabase
           .from('device_playlists')
           .select('playlist_id')
           .eq('device_id', device.id)
-          .eq('is_active', true)
+          .eq('ativo', true)
           .single();
-
-        if (devicePlaylistError) {
-          console.error('Erro ao buscar playlist do dispositivo:', devicePlaylistError);
-          return;
+        
+        if (!activoPlaylistError && activoPlaylist) {
+          playlistId = activoPlaylist.playlist_id;
+          console.log('Playlist encontrada com ativo:', playlistId);
+        } else {
+          // Last resort: just get any playlist assigned to this device
+          console.log('Tentando encontrar qualquer playlist para o dispositivo');
+          const { data: anyPlaylist, error: anyPlaylistError } = await supabase
+            .from('device_playlists')
+            .select('playlist_id')
+            .eq('device_id', device.id)
+            .single();
+          
+          if (!anyPlaylistError && anyPlaylist) {
+            playlistId = anyPlaylist.playlist_id;
+            console.log('Playlist encontrada sem filtros:', playlistId);
+          }
         }
+      }
 
-        if (!devicePlaylist) {
-          console.error('Nenhuma playlist ativa para este dispositivo');
-          return;
-        }
-
-        playlistId = devicePlaylist.playlist_id;
+      if (!playlistId) {
+        console.error('Nenhuma playlist encontrada para este dispositivo');
+        return;
       }
 
       console.log('ID da playlist:', playlistId);

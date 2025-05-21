@@ -32,7 +32,7 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
     // First, get the device information
     const { data: device, error: deviceError } = await supabase
       .from('devices')
-      .select('id, playlist_id')
+      .select('id')
       .eq('code', deviceCode)
       .single();
 
@@ -53,33 +53,51 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
 
     console.log("Found device:", device);
 
-    // If the device doesn't directly have a playlist_id, look for active playlists in device_playlists
-    let playlistId = device.playlist_id;
+    // Look for active playlists in device_playlists table
+    const { data: devicePlaylist, error: devicePlaylistError } = await supabase
+      .from('device_playlists')
+      .select('playlist_id')
+      .eq('device_id', device.id)
+      .eq('is_active', true)
+      .single();
+
+    console.log("Device playlist query result:", devicePlaylist, devicePlaylistError);
+
+    // If no active playlist or is_active column doesn't exist, try without the is_active filter
+    let playlistId: string | null = null;
     
+    if (devicePlaylistError && devicePlaylistError.message.includes("is_active")) {
+      console.log("is_active column may not exist, trying query without it");
+      const { data: fallbackDevicePlaylist, error: fallbackError } = await supabase
+        .from('device_playlists')
+        .select('playlist_id')
+        .eq('device_id', device.id)
+        .single();
+        
+      if (!fallbackError && fallbackDevicePlaylist) {
+        playlistId = fallbackDevicePlaylist.playlist_id;
+      }
+    } else if (!devicePlaylistError && devicePlaylist) {
+      playlistId = devicePlaylist.playlist_id;
+    }
+
+    // If we still don't have a playlist_id, try a different field name (ativo instead of is_active)
     if (!playlistId) {
-      const { data: devicePlaylist, error: devicePlaylistError } = await supabase
+      console.log("Trying with 'ativo' field instead of 'is_active'");
+      const { data: activoDevicePlaylist, error: activoError } = await supabase
         .from('device_playlists')
         .select('playlist_id')
         .eq('device_id', device.id)
         .eq('ativo', true)
         .single();
-
-      if (devicePlaylistError && devicePlaylistError.code !== 'PGRST116') {
-        console.error("Device playlist error:", devicePlaylistError);
-        toast({
-          title: "Erro",
-          description: "Não foi possível encontrar uma playlist ativa para este dispositivo",
-          variant: "destructive"
-        });
-        throw new Error('No active playlist found for this device');
-      }
-
-      if (devicePlaylist) {
-        playlistId = devicePlaylist.playlist_id;
+        
+      if (!activoError && activoDevicePlaylist) {
+        playlistId = activoDevicePlaylist.playlist_id;
       }
     }
 
     if (!playlistId) {
+      console.log("No playlist found for device");
       toast({
         title: "Sem playlist",
         description: "Este dispositivo não tem uma playlist atribuída",
