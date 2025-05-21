@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { saveDeviceCode, getPlaylistByDeviceCode } from '@/lib/supabase';
+import { saveDeviceCode } from '@/lib/supabase';
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from '@/lib/supabase';
 
@@ -70,7 +70,7 @@ const DeviceCodeForm: React.FC = () => {
       
       console.log("Dispositivo encontrado:", device);
       
-      // Check for device_playlists entries
+      // Check for device_playlists entries using different approaches
       const { data: devicePlaylists, error: dpError } = await supabase
         .from('device_playlists')
         .select('playlist_id')
@@ -80,34 +80,83 @@ const DeviceCodeForm: React.FC = () => {
       
       if (dpError) {
         console.error("Erro ao verificar playlists do dispositivo:", dpError);
-      }
-      
-      if (!devicePlaylists || devicePlaylists.length === 0) {
         toast({
-          title: "Sem playlist",
-          description: "Este dispositivo não tem nenhuma playlist associada na tabela device_playlists",
+          title: "Erro",
+          description: `Erro ao verificar playlists do dispositivo: ${dpError.message}`,
           variant: "destructive"
         });
         setLoading(false);
         return;
       }
       
-      // Now try to get the full playlist
-      const playlist = await getPlaylistByDeviceCode(deviceCode);
-      
-      if (playlist) {
-        // Save the device code
-        saveDeviceCode(deviceCode);
-        
-        // Navigate to player
-        navigate('/player');
-      } else {
+      if (!devicePlaylists || devicePlaylists.length === 0) {
         toast({
-          title: "Playlist não encontrada",
-          description: "Dispositivo encontrado, mas não há playlist disponível",
+          title: "Sem playlist",
+          description: "Este dispositivo não tem nenhuma playlist associada",
           variant: "destructive"
         });
+        setLoading(false);
+        return;
       }
+      
+      // Get the playlist ID
+      const playlistId = devicePlaylists[0].playlist_id;
+      console.log("ID da playlist encontrado:", playlistId);
+      
+      // Check if the playlist exists
+      const { data: playlist, error: playlistError } = await supabase
+        .from('playlists')
+        .select('id, name')
+        .eq('id', playlistId)
+        .single();
+        
+      if (playlistError || !playlist) {
+        console.error("Erro ao buscar playlist:", playlistError);
+        toast({
+          title: "Playlist não encontrada",
+          description: "A playlist associada ao dispositivo não foi encontrada",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      console.log("Playlist encontrada:", playlist);
+      
+      // Check if playlist has items, but query each table separately
+      const { data: playlistItems, error: itemsError } = await supabase
+        .from('playlist_items')
+        .select('id, ordem, tipo, tempo, playlist_id')
+        .eq('playlist_id', playlistId);
+        
+      if (itemsError) {
+        console.error("Erro ao buscar itens da playlist:", itemsError);
+        toast({
+          title: "Erro",
+          description: `Erro ao buscar itens da playlist: ${itemsError.message}`,
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      console.log("Itens da playlist encontrados:", playlistItems);
+      
+      if (!playlistItems || playlistItems.length === 0) {
+        toast({
+          title: "Playlist vazia",
+          description: "A playlist associada ao dispositivo não possui nenhum item",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Save the device code and navigate to player
+      console.log("Salvando código do dispositivo e redirecionando para player");
+      saveDeviceCode(deviceCode);
+      navigate('/player');
+      
     } catch (error) {
       console.error("Erro completo:", error);
       toast({
@@ -115,7 +164,6 @@ const DeviceCodeForm: React.FC = () => {
         description: error instanceof Error ? error.message : "Não foi possível verificar o código do dispositivo",
         variant: "destructive"
       });
-    } finally {
       setLoading(false);
     }
   };

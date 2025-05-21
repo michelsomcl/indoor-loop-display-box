@@ -53,59 +53,26 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
 
     console.log("Found device:", device);
 
-    // Look for active playlists in device_playlists table
-    const { data: devicePlaylist, error: devicePlaylistError } = await supabase
+    // Query device_playlists table to get all playlists for this device
+    const { data: devicePlaylists, error: dpError } = await supabase
       .from('device_playlists')
       .select('playlist_id')
-      .eq('device_id', device.id)
-      .eq('is_active', true)
-      .single();
-
-    console.log("Device playlist query result:", devicePlaylist, devicePlaylistError);
-
-    // If no active playlist or is_active column doesn't exist, try without the is_active filter
-    let playlistId: string | null = null;
+      .eq('device_id', device.id);
+      
+    if (dpError) {
+      console.error("Error fetching device playlists:", dpError);
+      throw new Error(`Error fetching device playlists: ${dpError.message}`);
+    }
     
-    if (devicePlaylistError && devicePlaylistError.message.includes("is_active")) {
-      console.log("is_active column may not exist, trying query without it");
-      const { data: fallbackDevicePlaylist, error: fallbackError } = await supabase
-        .from('device_playlists')
-        .select('playlist_id')
-        .eq('device_id', device.id)
-        .single();
-        
-      if (!fallbackError && fallbackDevicePlaylist) {
-        playlistId = fallbackDevicePlaylist.playlist_id;
-      }
-    } else if (!devicePlaylistError && devicePlaylist) {
-      playlistId = devicePlaylist.playlist_id;
+    if (!devicePlaylists || devicePlaylists.length === 0) {
+      console.error("No playlists found for device");
+      throw new Error('No playlists assigned to this device');
     }
-
-    // If we still don't have a playlist_id, try a different field name (ativo instead of is_active)
-    if (!playlistId) {
-      console.log("Trying with 'ativo' field instead of 'is_active'");
-      const { data: activoDevicePlaylist, error: activoError } = await supabase
-        .from('device_playlists')
-        .select('playlist_id')
-        .eq('device_id', device.id)
-        .eq('ativo', true)
-        .single();
-        
-      if (!activoError && activoDevicePlaylist) {
-        playlistId = activoDevicePlaylist.playlist_id;
-      }
-    }
-
-    if (!playlistId) {
-      console.log("No playlist found for device");
-      toast({
-        title: "Sem playlist",
-        description: "Este dispositivo não tem uma playlist atribuída",
-        variant: "destructive"
-      });
-      throw new Error('No playlist assigned to this device');
-    }
-
+    
+    console.log("Found device playlists:", devicePlaylists);
+    
+    // Use the first playlist found
+    const playlistId = devicePlaylists[0].playlist_id;
     console.log("Using playlist ID:", playlistId);
 
     // Get the playlist details
@@ -115,7 +82,7 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
       .eq('id', playlistId)
       .single();
 
-    if (playlistError) {
+    if (playlistError || !playlist) {
       console.error("Playlist error:", playlistError);
       toast({
         title: "Erro",
@@ -127,57 +94,74 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
 
     console.log("Found playlist:", playlist);
 
-    // Finally, get the playlist items
+    // Get the playlist items (simple query without joins)
     const { data: playlistItems, error: itemsError } = await supabase
       .from('playlist_items')
-      .select(`
-        id,
-        ordem,
-        tipo,
-        tempo,
-        media_files (url),
-        external_links (url)
-      `)
+      .select('id, ordem, tipo, tempo, playlist_id')
       .eq('playlist_id', playlistId)
       .order('ordem', { ascending: true });
 
     if (itemsError) {
       console.error("Items error:", itemsError);
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar itens da playlist",
-        variant: "destructive"
-      });
-      throw new Error('Failed to load playlist items');
+      throw new Error(`Failed to load playlist items: ${itemsError.message}`);
+    }
+    
+    if (!playlistItems || playlistItems.length === 0) {
+      console.log("No items found in playlist");
+      throw new Error('No items found in the playlist');
     }
 
     console.log("Found playlist items:", playlistItems);
-
-    // Map the items to our PlaylistItem interface
-    const items = playlistItems.map(item => {
+    
+    // Now get media files separately for each item that needs them
+    const items: PlaylistItem[] = [];
+    
+    for (const item of playlistItems) {
       let content = '';
       
       if (item.tipo === 'imagem' || item.tipo === 'video') {
-        // Check if media_files exists and has elements
-        content = item.media_files && item.media_files.length > 0 ? item.media_files[0].url : '';
+        // Fetch media from media_files table
+        const { data: mediaFiles, error: mediaError } = await supabase
+          .from('media_files')
+          .select('url')
+          .eq('playlist_item_id', item.id)
+          .single();
+          
+        if (!mediaError && mediaFiles) {
+          content = mediaFiles.url;
+        }
+        
+        console.log(`Media for item ${item.id}:`, mediaFiles, mediaError);
       } else if (item.tipo === 'link') {
-        // Check if external_links exists and has elements
-        content = item.external_links && item.external_links.length > 0 ? item.external_links[0].url : '';
+        // Fetch URL from external_links table
+        const { data: links, error: linkError } = await supabase
+          .from('external_links')
+          .select('url')
+          .eq('playlist_item_id', item.id)
+          .single();
+          
+        if (!linkError && links) {
+          content = links.url;
+        }
+        
+        console.log(`Link for item ${item.id}:`, links, linkError);
       }
       
-      return {
+      items.push({
         id: item.id,
         order: item.ordem,
         type: mapTipoToMediaType(item.tipo),
         content,
         duration: item.tempo || 10
-      };
-    });
+      });
+    }
 
+    console.log("Fully processed playlist items:", items);
+    
     return {
       id: playlist.id,
       name: playlist.name,
-      items: items || []
+      items: items
     };
   } catch (error) {
     console.error('Error fetching playlist:', error);

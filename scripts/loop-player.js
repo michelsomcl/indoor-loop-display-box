@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   async function carregarPlaylist() {
     console.log('Carregando playlist...');
-    const device_code = localStorage.getItem('deviceCode'); // Changed from device_code to deviceCode to match React app
+    const device_code = localStorage.getItem('deviceCode');
     console.log('Código do dispositivo:', device_code);
     
     if (!device_code) {
@@ -40,68 +40,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
       console.log('Dispositivo encontrado:', device);
 
-      // Try to find a playlist for the device using device_playlists table
-      let playlistId = null;
-      
-      // First try with is_active field
-      const { data: devicePlaylist, error: devicePlaylistError } = await supabase
+      // Query device_playlists table directly
+      const { data: devicePlaylists, error: dpError } = await supabase
         .from('device_playlists')
         .select('playlist_id')
-        .eq('device_id', device.id)
-        .eq('is_active', true)
-        .single();
-      
-      if (!devicePlaylistError && devicePlaylist) {
-        playlistId = devicePlaylist.playlist_id;
-        console.log('Playlist encontrada com is_active:', playlistId);
-      } else {
-        console.log('Tentando com campo ativo em vez de is_active');
+        .eq('device_id', device.id);
         
-        // Try with ativo field if is_active failed
-        const { data: activoPlaylist, error: activoPlaylistError } = await supabase
-          .from('device_playlists')
-          .select('playlist_id')
-          .eq('device_id', device.id)
-          .eq('ativo', true)
-          .single();
-        
-        if (!activoPlaylistError && activoPlaylist) {
-          playlistId = activoPlaylist.playlist_id;
-          console.log('Playlist encontrada com ativo:', playlistId);
-        } else {
-          // Last resort: just get any playlist assigned to this device
-          console.log('Tentando encontrar qualquer playlist para o dispositivo');
-          const { data: anyPlaylist, error: anyPlaylistError } = await supabase
-            .from('device_playlists')
-            .select('playlist_id')
-            .eq('device_id', device.id)
-            .single();
-          
-          if (!anyPlaylistError && anyPlaylist) {
-            playlistId = anyPlaylist.playlist_id;
-            console.log('Playlist encontrada sem filtros:', playlistId);
-          }
-        }
+      if (dpError) {
+        console.error('Erro ao buscar playlists do dispositivo:', dpError);
+        return;
       }
-
-      if (!playlistId) {
+      
+      if (!devicePlaylists || devicePlaylists.length === 0) {
         console.error('Nenhuma playlist encontrada para este dispositivo');
         return;
       }
-
+      
+      console.log('Playlists encontradas:', devicePlaylists);
+      
+      // Use the first playlist found
+      const playlistId = devicePlaylists[0].playlist_id;
       console.log('ID da playlist:', playlistId);
 
-      // Get playlist items
+      // Get playlist items - simple query without joins
       const { data: playlistItems, error: itemsError } = await supabase
         .from('playlist_items')
-        .select(`
-          id,
-          ordem,
-          tipo,
-          tempo,
-          media_files (url),
-          external_links (url)
-        `)
+        .select('id, ordem, tipo, tempo, playlist_id')
         .eq('playlist_id', playlistId)
         .order('ordem', { ascending: true });
 
@@ -117,25 +81,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
       console.log('Itens da playlist:', playlistItems);
 
-      // Map the items to our playlist format
-      playlist = playlistItems.map(item => {
+      // Process playlist items one by one to get content URLs
+      playlist = [];
+      
+      for (const item of playlistItems) {
         let url = '';
         
         if (item.tipo === 'imagem' || item.tipo === 'video') {
-          // Access the first item of the media_files array if available
-          url = item.media_files && item.media_files.length > 0 ? item.media_files[0].url : '';
+          // Get URL from media_files table
+          const { data: media, error: mediaError } = await supabase
+            .from('media_files')
+            .select('url')
+            .eq('playlist_item_id', item.id)
+            .single();
+            
+          if (!mediaError && media) {
+            url = media.url;
+          }
         } else if (item.tipo === 'link') {
-          // Access the first item of the external_links array if available
-          url = item.external_links && item.external_links.length > 0 ? item.external_links[0].url : '';
+          // Get URL from external_links table
+          const { data: link, error: linkError } = await supabase
+            .from('external_links')
+            .select('url')
+            .eq('playlist_item_id', item.id)
+            .single();
+            
+          if (!linkError && link) {
+            url = link.url;
+          }
         }
         
-        return {
+        playlist.push({
           id: item.id,
           tipo: item.tipo,
           url: url,
-          duracao: item.tempo || 10  // Default to 10 seconds if not specified
-        };
-      });
+          duracao: item.tempo || 10
+        });
+      }
 
       console.log('Playlist processada:', playlist);
       index = 0;
@@ -155,6 +137,10 @@ document.addEventListener('DOMContentLoaded', function() {
       const img = document.createElement('img');
       img.src = item.url;
       img.style = 'width:100vw;height:100vh;object-fit:cover;';
+      img.onerror = () => {
+        console.error('Erro ao carregar imagem:', item.url);
+        setTimeout(proximoItem, 2000); // Move to next if image fails
+      };
       container.appendChild(img);
       setTimeout(proximoItem, item.duracao * 1000);
     } else if (item.tipo === 'video') {
@@ -175,7 +161,10 @@ document.addEventListener('DOMContentLoaded', function() {
       iframe.src = item.url;
       iframe.style = 'width:100vw;height:100vh;border:none;';
       iframe.onload = () => console.log('Link carregado:', item.url);
-      iframe.onerror = () => console.error('Erro ao carregar link:', item.url);
+      iframe.onerror = () => {
+        console.error('Erro ao carregar link:', item.url);
+        setTimeout(proximoItem, 2000); // Move to next if iframe fails
+      };
       container.appendChild(iframe);
       setTimeout(proximoItem, item.duracao * 1000);
     }
