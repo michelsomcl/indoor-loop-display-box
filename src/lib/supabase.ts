@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { toast } from "@/components/ui/use-toast";
 
@@ -97,9 +96,9 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
     // Get the playlist items (simple query without joins)
     const { data: playlistItems, error: itemsError } = await supabase
       .from('playlist_items')
-      .select('id, ordem, tipo, tempo, playlist_id')
+      .select('id, order_num, tipo, tempo, playlist_id')  // Changed "ordem" to "order_num"
       .eq('playlist_id', playlistId)
-      .order('ordem', { ascending: true });
+      .order('order_num', { ascending: true });  // Changed "ordem" to "order_num" here too
 
     if (itemsError) {
       console.error("Items error:", itemsError);
@@ -149,7 +148,7 @@ export const getPlaylistByDeviceCode = async (deviceCode: string): Promise<Playl
       
       items.push({
         id: item.id,
-        order: item.ordem,
+        order: item.order_num,  // Changed from item.ordem to item.order_num
         type: mapTipoToMediaType(item.tipo),
         content,
         duration: item.tempo || 10

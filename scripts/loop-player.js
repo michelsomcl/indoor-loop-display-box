@@ -65,9 +65,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // Get playlist items - simple query without joins
       const { data: playlistItems, error: itemsError } = await supabase
         .from('playlist_items')
-        .select('id, ordem, tipo, tempo, playlist_id')
+        .select('id, order_num, tipo, tempo, playlist_id')  // Changed "ordem" to "order_num"
         .eq('playlist_id', playlistId)
-        .order('ordem', { ascending: true });
+        .order('order_num', { ascending: true });  // Changed "ordem" to "order_num" here too
 
       if (itemsError) {
         console.error('Erro ao buscar itens da playlist:', itemsError);
